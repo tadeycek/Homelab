@@ -8,19 +8,18 @@ certs/
 *.pem
 *.crt
 
-# Runtime data
-data/
-config/
-world-backups/
-downloads/
+# Runtime data (anchored, so source folders named data/ or config/ are not hidden)
+/services/*/data/
+/services/*/config/
+/services/*/world-backups/
+/services/*/downloads/
 *.log
+*.db
+*.sqlite
+*.sqlite3
 
 # Third-party project, not part of this repo
 odysseus/
-
-# Third-party / separately versioned projects (own GitHub repos)
-bots/tradingbot/
-bots/polymarket/
 
 # Build output and dependencies
 node_modules/

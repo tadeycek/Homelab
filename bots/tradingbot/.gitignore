@@ -1,0 +1,30 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Bot runtime output
+trading_bot.log
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# Test caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment files (never commit secrets)
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
