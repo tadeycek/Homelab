@@ -8,6 +8,8 @@ services:
       TYPE: CUSTOM
       CUSTOM_SERVER: /data/forge-1.12.2-14.23.5.2860.jar
       MEMORY: 8G
+      ENABLE_WHITELIST: "true"
+      WHITELIST: "${MC_WHITELIST}"
       TZ: Europe/Ljubljana
     ports:
       - "25601:25565"
