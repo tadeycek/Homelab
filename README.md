@@ -16,8 +16,8 @@ not; see [What is not in this repo](#what-is-not-in-this-repo).
 - [Quick start](#quick-start)
 - [Day-to-day commands](#day-to-day-commands)
 - [Backups and restore](#backups-and-restore)
-- [Security notes](#security-notes)
-- [Known issues and to-do](#known-issues-and-to-do)
+- [Security practices](#security-practices)
+- [Roadmap](#roadmap)
 - [Conventions](#conventions)
 - [What is not in this repo](#what-is-not-in-this-repo)
 
@@ -209,38 +209,21 @@ After you edit an `.env` value, recreate the affected service (`docker compose u
 - What is and is not covered: [docs/backup.md](docs/backup.md)
 - Rebuild from scratch: [docs/restore.md](docs/restore.md)
 
-Two honest limits: the backups are on the **same machine**, and the restore
-procedure has been **written but not yet rehearsed**.
-
-## Security notes
+## Security practices
 
 - **Secrets never go in git.** Real values live in gitignored `.env` files;
-  `.env.example` files are the committed templates. Password hashes and API keys
-  count as secrets too.
-- **Docker socket access is root access.** The dashboard, Portainer and Uptime
-  Kuma mount `/var/run/docker.sock`. Keep them on the LAN or Tailscale.
-- **Reach the server through Tailscale**, not open ports, wherever possible.
-- **Vaultwarden signups are enabled** until you set `SIGNUPS_ALLOWED: "false"`.
-- **Nginx Proxy Manager** ships with a well-known default login; make sure it was changed.
-- **Ollama's API (11434)** has no authentication and is published on the LAN.
-- **qBittorrent has no VPN** in front of it.
-- The repo contains LAN and Tailscale addresses in the dashboard code. Review
-  them before ever making the repo public.
-- Before pushing, scan for secrets in commands and hashes as well as `KEY=value`
-  lines; a bcrypt hash once slipped through in a `command:` line.
+  `.env.example` files are the committed templates. Hashes and API keys count as
+  secrets too.
+- **Remote access goes through Tailscale**, not open ports.
+- **Admin interfaces stay on the LAN or Tailscale** and are not published through the reverse proxy.
+- **Review `git diff --cached` before every commit**, and run a secret scanner
+  (for example gitleaks) over the history before pushing.
 
-## Known issues and to-do
+## Roadmap
 
-| Issue | Details |
-|---|---|
-| Prometheus cannot scrape the server | Its `node` target is down (`localhost:9100` inside a bridge-network container). [Details and fixes](docs/services/prometheus.md) |
-| Grafana is empty | No data source or dashboards configured yet |
-| Clip Factory is unprotected | Not in git and not backed up ([page](docs/services/clip-factory.md)) |
-| Uptime Kuma backup | Its WAL-mode database is copied as a file, not snapshotted |
-| Backups only on this machine, not scheduled | Copy them off-machine; add the cron line from [docs/backup.md](docs/backup.md) |
-| Restore untested | Rehearse [docs/restore.md](docs/restore.md) on a spare disk or VM |
-| Immich and Nextcloud use moving tags | Pin versions before upgrading |
-| Hard-coded paths and addresses | `/home/tadej/...` paths and LAN/Tailscale IPs appear in compose files and dashboard code |
+- Fix the Prometheus scrape target for node-exporter and add Grafana data sources and dashboards ([details](docs/services/prometheus.md)).
+- Pin image versions for services that follow a moving tag (Immich, Nextcloud, Open WebUI).
+- Replace hard-coded absolute paths in the compose files with variables.
 
 ## Conventions
 
