@@ -9,6 +9,9 @@ services:
       - "4000:4000"
     environment:
       PIHOLE_PASSWORD: "${PIHOLE_WEBPASSWORD}"
+      RADARR_API_KEY: "${RADARR_API_KEY}"
+      SONARR_API_KEY: "${SONARR_API_KEY}"
+      LIDARR_API_KEY: "${LIDARR_API_KEY}"
     volumes:
       - /mnt/data/docker/dashboard:/data
       - /mnt/data:/mnt/data:ro
