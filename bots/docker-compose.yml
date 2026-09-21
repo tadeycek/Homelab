@@ -1,0 +1,30 @@
+services:
+
+  polymarket-bot:
+    build:
+      context: .
+      dockerfile: polymarket.Dockerfile
+    container_name: polymarket-bot
+    restart: unless-stopped
+    env_file: polymarket/.env
+    volumes:
+      - /mnt/data/docker/bots/polymarket:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  tradingbot:
+    build:
+      context: .
+      dockerfile: tradingbot.Dockerfile
+    container_name: tradingbot
+    restart: unless-stopped
+    volumes:
+      - /mnt/data/docker/bots/tradingbot:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

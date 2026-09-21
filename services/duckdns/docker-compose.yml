@@ -1,0 +1,14 @@
+services:
+  duckdns:
+    image: lscr.io/linuxserver/duckdns:latest
+    container_name: duckdns
+    restart: unless-stopped
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: Europe/Ljubljana
+      SUBDOMAINS: ${DUCKDNS_SUBDOMAINS}
+      TOKEN: ${DUCKDNS_TOKEN}
+      LOG_FILE: "false"
+    volumes:
+      - /mnt/data/docker/duckdns/config:/config

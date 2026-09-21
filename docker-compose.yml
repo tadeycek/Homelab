@@ -1,0 +1,393 @@
+services:
+
+  # ── Dashboard ──────────────────────────────────────────────────────────────
+  dashboard:
+    build: ./dashboard
+    container_name: dashboard
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      PIHOLE_PASSWORD: "${PIHOLE_WEBPASSWORD}"
+    volumes:
+      - /mnt/data/docker/dashboard:/data
+      - /mnt/data:/mnt/data:ro
+      - /mnt/data/docker/skyfactory4/data:/mcservers/skyfactory4
+      - /mnt/data/docker/bots/polymarket:/bots/polymarket
+      - /mnt/data/docker/bots/tradingbot:/bots/tradingbot
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/tailscale:/var/run/tailscale:ro
+      - /sys/class/power_supply:/sys/class/power_supply:ro
+      - /sys/class/hwmon:/sys/class/hwmon:ro
+
+  # ── Portainer ──────────────────────────────────────────────────────────────
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    command: --admin-password='${PORTAINER_ADMIN_PASSWORD_HASH}'
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/data/docker/portainer:/data
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+
+  # ── Pi-hole ────────────────────────────────────────────────────────────────
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8080:80/tcp"   # Pi-hole web UI
+    environment:
+      TZ: Europe/Ljubljana
+      WEBPASSWORD: "${PIHOLE_WEBPASSWORD}"
+    volumes:
+      - /mnt/data/docker/pihole/etc-pihole:/etc/pihole
+      - /mnt/data/docker/pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+    cap_add:
+      - NET_ADMIN
+    dns:
+      - 127.0.0.1
+      - 1.1.1.1
+
+  # ── Nginx Proxy Manager ────────────────────────────────────────────────────
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: nginx-proxy-manager
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "81:81"    # NPM admin UI
+    volumes:
+      - /mnt/data/docker/nginx-proxy-manager/data:/data
+      - /mnt/data/docker/nginx-proxy-manager/letsencrypt:/etc/letsencrypt
+
+  # ── Ollama ─────────────────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    volumes:
+      - /mnt/data/docker/ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    # Uncomment below if you have a supported GPU:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # ── Open WebUI ─────────────────────────────────────────────────────────────
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    ports:
+      - "3000:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_SECRET_KEY=${OPEN_WEBUI_SECRET_KEY}
+      - RAG_EMBEDDING_ENGINE=ollama
+      - RAG_EMBEDDING_MODEL=nomic-embed-text
+    volumes:
+      - /mnt/data/docker/open-webui:/app/backend/data
+
+  # ── Jellyfin ───────────────────────────────────────────────────────────────
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    network_mode: host   # enables DLNA discovery
+    environment:
+      - JELLYFIN_PublishedServerUrl=http://localhost:8096
+      - TZ=Europe/Ljubljana
+    volumes:
+      - /mnt/data/docker/jellyfin/config:/config
+      - /mnt/data/docker/jellyfin/cache:/cache
+      - /mnt/data/media:/media   # put your media here
+
+  # ── Nextcloud ──────────────────────────────────────────────────────────────
+  nextcloud-db:
+    image: mariadb:11
+    container_name: nextcloud-db
+    restart: unless-stopped
+    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+    volumes:
+      - /mnt/data/docker/nextcloud/db:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "${NEXTCLOUD_DB_ROOT_PASSWORD}"
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: "${NEXTCLOUD_DB_PASSWORD}"
+
+  nextcloud:
+    image: nextcloud:latest
+    container_name: nextcloud
+    restart: unless-stopped
+    depends_on:
+      - nextcloud-db
+    ports:
+      - "8081:80"
+    volumes:
+      - /mnt/data/docker/nextcloud/html:/var/www/html
+    environment:
+      MYSQL_HOST: nextcloud-db
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: "${NEXTCLOUD_DB_PASSWORD}"
+      NEXTCLOUD_ADMIN_USER: admin
+      NEXTCLOUD_ADMIN_PASSWORD: "${NEXTCLOUD_ADMIN_PASSWORD}"
+
+  # ── Immich ─────────────────────────────────────────────────────────────────
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:release
+    container_name: immich-server
+    restart: unless-stopped
+    depends_on:
+      - immich-db
+      - immich-redis
+    ports:
+      - "2283:2283"
+    environment:
+      DB_HOSTNAME: immich-db
+      DB_USERNAME: immich
+      DB_PASSWORD: "${IMMICH_DB_PASSWORD}"
+      DB_DATABASE_NAME: immich
+      REDIS_HOSTNAME: immich-redis
+      UPLOAD_LOCATION: /usr/src/app/upload
+      TZ: Europe/Ljubljana
+    volumes:
+      - /mnt/data/docker/immich/upload:/usr/src/app/upload
+
+  immich-machine-learning:
+    image: ghcr.io/immich-app/immich-machine-learning:release
+    container_name: immich-machine-learning
+    restart: unless-stopped
+    volumes:
+      - /mnt/data/docker/immich/ml-cache:/cache
+    environment:
+      TZ: Europe/Ljubljana
+
+  immich-redis:
+    image: redis:7-alpine
+    container_name: immich-redis
+    restart: unless-stopped
+    volumes:
+      - /mnt/data/docker/immich/redis:/data
+
+  immich-db:
+    image: tensorchord/pgvecto-rs:pg14-v0.2.0
+    container_name: immich-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: immich
+      POSTGRES_PASSWORD: "${IMMICH_DB_PASSWORD}"
+      POSTGRES_DB: immich
+    volumes:
+      - /mnt/data/docker/immich/db:/var/lib/postgresql/data
+
+  # ── Vaultwarden ────────────────────────────────────────────────────────────
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    ports:
+      - "8443:8443"
+    environment:
+      DOMAIN: "https://192.168.1.105:8443"
+      SIGNUPS_ALLOWED: "true"
+      ROCKET_TLS: '{certs="/ssl/cert.pem",key="/ssl/key.pem"}'
+      ROCKET_PORT: "8443"
+    volumes:
+      - /mnt/data/docker/vaultwarden:/data
+      - /home/tadej/homeserver/certs:/ssl:ro
+
+  # ── qBittorrent ────────────────────────────────────────────────────────────
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Ljubljana
+      - WEBUI_PORT=8082
+    ports:
+      - "8082:8082"
+      - "6881:6881"
+      - "6881:6881/udp"
+    volumes:
+      - /mnt/data/docker/qbittorrent/config:/config
+      - /mnt/data:/data
+
+  # ── Prowlarr (indexer manager) ─────────────────────────────────────────────
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Ljubljana
+    ports:
+      - "9696:9696"
+    volumes:
+      - /mnt/data/docker/prowlarr/config:/config
+
+  # ── Radarr (movies) ────────────────────────────────────────────────────────
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Ljubljana
+    ports:
+      - "7878:7878"
+    volumes:
+      - /mnt/data/docker/radarr/config:/config
+      - /mnt/data:/data
+
+  # ── Sonarr (TV shows) ──────────────────────────────────────────────────────
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Ljubljana
+    ports:
+      - "8989:8989"
+    volumes:
+      - /mnt/data/docker/sonarr/config:/config
+      - /mnt/data:/data
+
+  # ── Jellyseerr (request portal) ───────────────────────────────────────────
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Ljubljana
+    ports:
+      - "5055:5055"
+    volumes:
+      - /mnt/data/docker/jellyseerr/config:/app/config
+
+  # ── Lidarr (music) ─────────────────────────────────────────────────────────
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Ljubljana
+    ports:
+      - "8686:8686"
+    volumes:
+      - /mnt/data/docker/lidarr/config:/config
+      - /mnt/data:/data
+
+  # ── Navidrome (music server) ───────────────────────────────────────────────
+  navidrome:
+    image: deluan/navidrome:latest
+    container_name: navidrome
+    restart: unless-stopped
+    user: "1000:1000"
+    ports:
+      - "4533:4533"
+    environment:
+      ND_MUSICFOLDER: /music
+      ND_DATAFOLDER: /data
+      ND_LOGLEVEL: info
+      ND_SESSIONTIMEOUT: 24h
+      TZ: Europe/Ljubljana
+    volumes:
+      - /mnt/data/docker/navidrome:/data
+      - /mnt/data/media/music:/music:ro
+
+  # ── Uptime Kuma ────────────────────────────────────────────────────────────
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - /mnt/data/docker/uptime-kuma:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # ── Monitoring ─────────────────────────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - /:/host:ro,rslave
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    volumes:
+      - /home/tadej/homeserver/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /mnt/data/docker/prometheus:/prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=tadej
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - /mnt/data/docker/grafana:/var/lib/grafana
+
+  # ── Crafty Controller (Minecraft server management) ───────────────────────
+  crafty:
+    image: registry.gitlab.com/crafty-controller/crafty-4:latest
+    container_name: crafty
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Ljubljana
+    ports:
+      - "8000:8000"     # HTTP -> redirects to HTTPS
+      - "8444:8443"     # Web UI (HTTPS)
+      - "8123:8123"     # Dynmap
+      - "25565-25575:25565-25575"       # Java MC server port range
+      - "19132-19142:19132-19142/udp"   # Bedrock server port range
+    volumes:
+      - /mnt/data/docker/crafty/backups:/crafty/backups
+      - /mnt/data/docker/crafty/logs:/crafty/logs
+      - /mnt/data/docker/crafty/servers:/crafty/servers
+      - /mnt/data/docker/crafty/config:/crafty/app/config
+      - /mnt/data/docker/crafty/import:/crafty/import

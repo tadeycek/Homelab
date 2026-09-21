@@ -1,0 +1,24 @@
+services:
+  skyfactory4:
+    image: itzg/minecraft-server:java8
+    container_name: skyfactory4
+    restart: unless-stopped
+    environment:
+      EULA: "true"
+      TYPE: CUSTOM
+      CUSTOM_SERVER: /data/forge-1.12.2-14.23.5.2860.jar
+      MEMORY: 8G
+      TZ: Europe/Ljubljana
+    ports:
+      - "25601:25565"
+    volumes:
+      - /mnt/data/docker/skyfactory4/data:/data
+    networks:
+      - default
+      - homeserver_default
+    stdin_open: true
+    tty: true
+
+networks:
+  homeserver_default:
+    external: true
