@@ -86,17 +86,18 @@ Local HTTPS certificates are made with `mkcert` (CA installed in the system
 trust store, Chrome and Firefox) and stored in `certs/`. The current pair
 expires in September 2028; regenerate with `mkcert <lan-ip> <hostname>`.
 
-## Separately versioned projects
-
-Not part of this repo (see `.gitignore`):
+## Bots and third-party projects
 
 | Path | What | Where it lives |
 |---|---|---|
-| `bots/tradingbot/` | Trading bot | github.com/tadeycek/TradingBot |
-| `bots/polymarket/` | Polymarket bot | github.com/tadeycek/PolymarketBot |
-| `odysseus/` | Third-party AI project running 4 containers | not mine; obtain it from its upstream |
+| `bots/tradingbot/` | Trading bot | source is in this repo |
+| `bots/polymarket/` | Polymarket bot | source is in this repo; `.env` is gitignored |
+| `odysseus/` | Third-party AI project running 4 containers | **not** in this repo (gitignored); obtain it from its upstream |
 
-`bots/docker-compose.yml` in this repo builds the two bots from those clones.
+The bots were previously separate GitHub repositories. Those were deleted, so this repo
+is now the only remote copy of their source. `bots/docker-compose.yml` builds them.
+Runtime state (for example the Polymarket SQLite portfolio) lives in
+`/mnt/data/docker/bots/` and is covered by the backup.
 
 ## Secrets
 

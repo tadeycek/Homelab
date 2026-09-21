@@ -23,11 +23,11 @@ Rebuild order for a fresh machine, or after losing a disk. Git restores the
 ```bash
 git clone <repo-url> ~/homeserver
 cd ~/homeserver
-git clone https://github.com/tadeycek/TradingBot.git   bots/tradingbot
-git clone https://github.com/tadeycek/PolymarketBot.git bots/polymarket
 ```
 
-Odysseus is a third-party project; restore it separately if you still want it.
+The bot source (`bots/tradingbot`, `bots/polymarket`) is part of this repo. Only their
+`.env` files come from the backup. Odysseus is a third-party project and is not in
+this repo; restore it separately if you still want it.
 
 ## 3. Restore secrets
 

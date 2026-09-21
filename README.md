@@ -12,7 +12,7 @@ for data.
 ├── .env.example           template for the secrets the stack needs
 ├── dashboard/             custom status dashboard (Node server + React client)
 ├── prometheus/            Prometheus scrape config
-├── bots/                  build files for two trading bots (their code is in separate repos)
+├── bots/                  trading bot + Polymarket bot: source and build files
 ├── services/
 │   ├── duckdns/           dynamic DNS updater
 │   └── skyfactory4/       Minecraft modpack server
@@ -31,7 +31,7 @@ for data.
 | Admin | Portainer |
 | AI | Ollama, Open WebUI |
 | Games | Crafty Controller, SkyFactory 4 Minecraft server |
-| Bots | Trading bot, Polymarket bot |
+| Bots | Trading bot, Polymarket bot (source in `bots/`) |
 
 ```mermaid
 flowchart LR
